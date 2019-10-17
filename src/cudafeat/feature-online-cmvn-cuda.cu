@@ -35,7 +35,7 @@ __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
 
 #if __CUDA_ARCH__ == 750
 __launch_bounds__ (1024, 1)
-#else 
+#else
 __launch_bounds__ (1024, 2)
 #endif
 __global__ void compute_cmvn_stats_kernel(const float *data, int32_t ldd,
