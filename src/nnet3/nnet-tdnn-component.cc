@@ -32,6 +32,7 @@ namespace nnet3 {
 
 TdnnComponent::TdnnComponent():
     orthonormal_constraint_(0.0),
+    l4_rearrange_(false),
     use_natural_gradient_(true) { }
 
 
@@ -42,6 +43,7 @@ TdnnComponent::TdnnComponent(
     linear_params_(other.linear_params_),
     bias_params_(other.bias_params_),
     orthonormal_constraint_(other.orthonormal_constraint_),
+    l4_rearrange_(other.l4_rearrange_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) {
@@ -65,6 +67,8 @@ std::string TdnnComponent::Info() const {
   stream << UpdatableComponent::Info();
   if (orthonormal_constraint_ != 0.0)
     stream << ", orthonormal-constraint=" << orthonormal_constraint_;
+  if (l4_rearrange_ != 0.0)
+    stream << ", l4-rearrange=" << l4_rearrange_;
   stream << ", time-offsets=";
   for (size_t i = 0; i < time_offsets_.size(); i++) {
     if (i != 0) stream << ',';
@@ -120,9 +124,10 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
               << cfl->WholeLine();
   }
 
-  // 3. Parameter-initialization configs, "has-bias", and
-  // orthonormal-constraint.
+  // 3. Parameter-initialization configs, "has-bias",
+  // orthonormal-constraint and l4-rearrange.
   orthonormal_constraint_ = 0.0;
+  l4_rearrange_ = false;
   BaseFloat param_stddev = -1, bias_mean = 0.0, bias_stddev = 1.0;
   bool use_bias = true;
   cfl->GetValue("param-stddev", &param_stddev);
@@ -130,6 +135,7 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("bias-mean", &bias_mean);
   cfl->GetValue("use-bias", &use_bias);
   cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+  cfl->GetValue("l4-rearrange", &l4_rearrange_);
   if (param_stddev < 0.0) {
     param_stddev = 1.0 / sqrt(input_dim * time_offsets_.size());
   }
@@ -386,6 +392,10 @@ void TdnnComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<OrthonormalConstraint>");
   WriteBasicType(os, binary, orthonormal_constraint_);
+  if (l4_rearrange_) {
+    WriteToken(os, binary, "<L4Rearrange>");
+    WriteBasicType(os, binary, l4_rearrange_);
+  }
   WriteToken(os, binary, "<UseNaturalGradient>");
   WriteBasicType(os, binary, use_natural_gradient_);
   int32 rank_in = preconditioner_in_.GetRank(),
@@ -414,6 +424,12 @@ void TdnnComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<OrthonormalConstraint>");
   ReadBasicType(is, binary, &orthonormal_constraint_);
+  if (PeekToken(is, binary) == 'L') {
+    ExpectToken(is, binary, "<L4Rearrange>");
+    ReadBasicType(is, binary, &l4_rearrange_);
+  } else {
+    l4_rearrange_ = false;
+  }
   ExpectToken(is, binary, "<UseNaturalGradient>");
   ReadBasicType(is, binary, &use_natural_gradient_);
   int32 rank_in,  rank_out;

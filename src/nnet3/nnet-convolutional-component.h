@@ -416,7 +416,9 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
                       will constrain the parameter matrix to be closer to "any
                       alpha" times a semi-orthogonal matrix, without changing
                       its overall norm.
-
+     l4-rearrange=false   If you set this to true and l4-regularize is set,
+                      it will reshape the matrix before doing l4... TODO:
+                      figure out how.
 
    Initialization parameters:
       param-stddev    Standard deviation of the linear parameters of the
@@ -553,12 +555,16 @@ class TdnnComponent: public UpdatableComponent {
 
   CuMatrixBase<BaseFloat> &LinearParams() { return linear_params_; }
 
+  const CuMatrixBase<BaseFloat> &LinearParams() const { return linear_params_; }
+
   // This allows you to resize the vector in order to add a bias where
   // there previously was none-- obviously this should be done carefully.
   CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
-
+  bool L4Rearrange() const { return l4_rearrange_; }
   void ConsolidateMemory();
  private:
 
@@ -611,6 +617,9 @@ class TdnnComponent: public UpdatableComponent {
   // This class just returns the value via the OrthonormalConstraint() function;
   // it doesn't actually do anything with it directly.
   BaseFloat orthonormal_constraint_;
+
+  // see documentation above for l4-rearrange.
+  bool l4_rearrange_;
 
   // Controls whether or not the natural-gradient is used.  Note: even if this
   // is true, if is_gradient_ (from the UpdatableComponent base class) is true,

@@ -1007,7 +1007,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
 
   if (floating_scale) {
-    // This (letting the scale "float") is described in Sec. 2.3 of
+    // This (letting the scale "float) is described in Sec. 2.3 of
     // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
     // where 'scale' here is written 'alpha' in the paper.
     //
@@ -1112,6 +1112,8 @@ void ConstrainOrthonormal(Nnet *nnet) {
     CuMatrixBase<BaseFloat> *params = NULL;
     BaseFloat orthonormal_constraint = 0.0;
 
+    std::vector<int32> orthonormal_row_ranges;
+
     LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
     if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
       orthonormal_constraint = lc->OrthonormalConstraint();
@@ -1121,6 +1123,7 @@ void ConstrainOrthonormal(Nnet *nnet) {
     if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
       orthonormal_constraint = ac->OrthonormalConstraint();
       params = &(ac->LinearParams());
+      orthonormal_row_ranges = ac->OrthonormalRowRanges();
     }
     TdnnComponent *tc = dynamic_cast<TdnnComponent*>(component);
     if (tc != NULL && tc->OrthonormalConstraint() != 0.0) {
@@ -1134,7 +1137,31 @@ void ConstrainOrthonormal(Nnet *nnet) {
     }
 
     int32 rows = params->NumRows(), cols = params->NumCols();
-    if (rows <= cols) {
+    if (!orthonormal_row_ranges.empty()) {
+      // This branch would only be taken if the user supplied the
+      // "orthonormal-row-ranges" option in the xconfig.  It's a kind of
+      // specialized use-case, where you want to apply the constraint
+      // on parts of the matrix; it might be useful with attention
+      // layers.
+      KALDI_ASSERT(orthonormal_row_ranges.size() % 2 == 0);
+      for (size_t i = 0; i * 2 < orthonormal_row_ranges.size(); i++) {
+        int32 row_range_start = orthonormal_row_ranges[i*2],
+            row_range_end = orthonormal_row_ranges[i*2 + 1];
+        CuSubMatrix<BaseFloat> params_part(
+            params->RowRange(row_range_start,
+                             row_range_end - row_range_start));
+        if (params_part.NumRows() <= cols) {
+          ConstrainOrthonormalInternal(orthonormal_constraint,
+                                       &params_part);
+        } else {
+          // reaching this branch is unlikely.
+          CuMatrix<BaseFloat> params_part_trans(params_part, kTrans);
+          ConstrainOrthonormalInternal(orthonormal_constraint,
+                                       &params_part_trans);
+          params_part.CopyFromMat(params_part_trans, kTrans);
+        }
+      }
+    } else if (rows <= cols) {
       ConstrainOrthonormalInternal(orthonormal_constraint, params);
     } else {
       CuMatrix<BaseFloat> params_trans(*params, kTrans);
@@ -2241,6 +2268,183 @@ int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
   return num_n_values;
 }
 
+
+/**
+   Suppose we are adding a penalty term to the objective function:
+       -l4_factor * ||params||_4^4
+   where ||.||_4^4 is the spectral 4-norm taken to the power 4, i.e. the sum of
+   the 4th powers of the singular values of 'params'.  This function adds the
+   derivative of that penalty term to 'delta_params'.  The penalty term can
+   be expressed more conveniently for taking derivatives, as (with params == M):
+
+    -l4_factor * tr(M M^T M M^T)
+   and its derivative w.r.t. M as:
+    -4.0 * l4_factor * M M^T M
+   which can (for efficiency) be bracketed as
+     -4.0 * l4_factor * (M M^T) M
+   if M.NumRows() <= M.NumCols(), and
+     -4.0 * l4_factor * M (M^T M)
+   otherwise.
+ */
+static void ApplyL4Regularization(BaseFloat l4_factor,
+                                  const CuMatrixBase<BaseFloat> &params,
+                                  CuMatrixBase<BaseFloat> *delta_params) {
+  KALDI_ASSERT(SameDim(params, *delta_params) && l4_factor > 0);
+
+  if (params.NumRows() <= params.NumCols()) {
+    // Bracket derivative as
+    // -4.0 * l4_factor * (M M^T) M
+    CuMatrix<BaseFloat> MMT(params.NumRows(), params.NumRows());
+    MMT.SymAddMat2(1.0, params, kNoTrans, 0.0);
+    MMT.CopyLowerToUpper();
+    // notice, the tranpose-ness of MMT below can be either way: we
+    // could optimize that for speed.
+    delta_params->AddMatMat(-4.0 * l4_factor, MMT, kNoTrans,
+                            params, kNoTrans, 1.0);
+  } else {
+    // Bracket derivative as
+    // -4.0 * l4_factor * M (M^T M)
+    CuMatrix<BaseFloat> MTM(params.NumCols(), params.NumCols());
+    MTM.SymAddMat2(1.0, params, kTrans, 0.0);
+    MTM.CopyLowerToUpper();
+    // notice, the tranpose-ness of MTM below can be either way: we
+    // could optimize that for speed.
+    delta_params->AddMatMat(-4.0 * l4_factor, params, kNoTrans,
+                            MTM, kTrans, 1.0);
+  }
+}
+
+// This is a wrapper function that rearranges the blocks of the matrices of TDNN-F
+// layers prior to L4 regularization.  It rearranges them so that the num-cols
+// is the input dimension (instead of the input dimension * num_offsets).
+static void ApplyL4RegularizationRearranged(
+    int32 num_offsets, BaseFloat l4_factor,
+    const CuMatrixBase<BaseFloat> &params,
+    CuMatrixBase<BaseFloat> *delta_params) {
+  int32 input_dim = params.NumCols() / num_offsets,
+      output_dim = params.NumRows();
+  CuMatrix<BaseFloat> params_rearranged(output_dim * num_offsets,
+                                        input_dim,
+                                        kUndefined),
+      delta_params_rearranged(output_dim * num_offsets, input_dim);
+  for (int32 o = 0; o < num_offsets; o++) {
+    CuSubMatrix<BaseFloat> params_part(params,
+                                       0, output_dim,
+                                       o * input_dim, input_dim),
+        params_rearranged_part(params_rearranged,
+                               o * output_dim, output_dim,
+                               0, input_dim);
+    params_rearranged_part.CopyFromMat(params_part);
+  }
+  ApplyL4Regularization(l4_factor, params_rearranged,
+                        &delta_params_rearranged);
+  for (int32 o = 0; o < num_offsets; o++) {
+    CuSubMatrix<BaseFloat> delta_params_part(*delta_params,
+                                             0, output_dim,
+                                             o * input_dim, input_dim),
+        delta_params_rearranged_part(delta_params_rearranged,
+                                     o * output_dim, output_dim,
+                                     0, input_dim);
+    delta_params_part.AddMat(1.0, delta_params_rearranged_part);
+  }
+}
+
+
+/**
+   Do the l4 regularization for one component; this is only supported for
+   certain component crash and will crash for those where l4 regularization is
+   not supported.
+
+   'regularize_scale' will normally be 1.0; it corresponds to the user-specified
+   command line configuration value --l2-regularize-scale.
+   'component' is the component whose parameters we are regularizing.
+   'delta_component' is a temporary place to which we add the change in parameters;
+      this will be subjected to the 'max-change' constraint and then added
+      to 'component'.
+
+   We are penalizing ||M||_4^4, where ||.|| is the spectral norm.  What this
+   means is, if M is the parameter matrix, the penalty term (which is negative
+   since we're maximizing) is -l4_factor * tr(M M^T M M^T).
+
+   If the component has a bias, we treat the l4_factor value as an
+   l2_regularize value.
+ */
+static void ApplyComponentL4Regularization(
+    BaseFloat regularize_scale,
+    const UpdatableComponent &component, UpdatableComponent *delta_component) {
+
+  BaseFloat lrate = delta_component->LearningRate(),
+      l4_regularize = delta_component->L4Regularization();
+  KALDI_ASSERT(lrate >= 0 && l4_regularize >= 0);
+  BaseFloat l4_factor = regularize_scale * lrate * l4_regularize;
+
+
+  const AffineComponent *affine_component =
+      dynamic_cast<const AffineComponent*>(&component);
+  if (affine_component != NULL) {
+    AffineComponent *delta_affine_component =
+        dynamic_cast<AffineComponent*>(delta_component);
+    const CuMatrix<BaseFloat> &linear_params = affine_component->LinearParams();
+    CuMatrix<BaseFloat> *delta_linear_params =
+        &(delta_affine_component->LinearParams());
+    ApplyL4Regularization(l4_factor, linear_params, delta_linear_params);
+
+    // we treat the l4 factor as an l2 factor when it comes to the bias.
+    // If this isn't what you want it's possible to use a LinearComponent
+    // followed by a PerElementOffsetComponent, for which you can set the
+    // l2 separately.
+    delta_affine_component->BiasParams().AddVec(
+        -2.0 * l4_factor, affine_component->BiasParams());
+    return;
+  }
+
+  const TdnnComponent *tdnn_component =
+      dynamic_cast<const TdnnComponent*>(&component);
+  if (tdnn_component != NULL) {
+    TdnnComponent *delta_tdnn_component =
+        dynamic_cast<TdnnComponent*>(delta_component);
+    const CuMatrixBase<BaseFloat> &linear_params = tdnn_component->LinearParams();
+    CuMatrixBase<BaseFloat> *delta_linear_params =
+        &(delta_tdnn_component->LinearParams());
+    if (tdnn_component->L4Rearrange() &&
+        linear_params.NumCols() != tdnn_component->InputDim()) {
+      int32 num_offsets = linear_params.NumCols() / tdnn_component->InputDim();
+      ApplyL4RegularizationRearranged(num_offsets, l4_factor,
+                                      linear_params, delta_linear_params);
+    } else {
+      ApplyL4Regularization(l4_factor, linear_params, delta_linear_params);
+    }
+
+    // we treat the l4 factor as an l2 factor when it comes to the bias.
+    // If this isn't what you want it's possible to use a LinearComponent
+    // followed by a PerElementOffsetComponent, for which you can set the
+    // l2 separately.
+    if (tdnn_component->BiasParams().Dim() != 0) {
+      delta_tdnn_component->BiasParams().AddVec(
+          -2.0 * l4_factor, tdnn_component->BiasParams());
+    }
+    return;
+  }
+
+
+  const LinearComponent *linear_component =
+      dynamic_cast<const LinearComponent*>(&component);
+  if (linear_component != NULL) {
+    LinearComponent *delta_linear_component =
+        dynamic_cast<LinearComponent*>(delta_component);
+    const CuMatrixBase<BaseFloat> &linear_params = linear_component->Params();
+    CuMatrixBase<BaseFloat> *delta_linear_params =
+        &(delta_linear_component->Params());
+    ApplyL4Regularization(l4_factor, linear_params, delta_linear_params);
+    return;
+  }
+
+  KALDI_ERR << "Components of type " << component.Type()
+            << " do not currently support l4 regularization.";
+}
+
+
+
 void ApplyL2Regularization(const Nnet &nnet,
                            BaseFloat l2_regularize_scale,
                            Nnet *delta_nnet) {
@@ -2261,6 +2465,11 @@ void ApplyL2Regularization(const Nnet &nnet,
       BaseFloat scale = -2.0 * l2_regularize_scale * lrate * l2_regularize;
       if (scale != 0.0)
         dest_component->Add(scale, *src_component);
+
+      if (dest_component->L4Regularization() != 0.0) {
+        ApplyComponentL4Regularization(l2_regularize_scale,
+                                       *src_component, dest_component);
+      }
     }
   }
 }
