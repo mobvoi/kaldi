@@ -80,17 +80,42 @@ class DenominatorGraph {
   // memory will be GPU memory if we are using a GPU.
   const DenominatorGraphTransition *Transitions() const;
 
-  // returns the initial-probs of the HMM-states... note, these initial-probs
-  // don't mean initial at the start of the file, because we usually train on
-  // pieces of a file.  They are approximate initial-probs obtained by running
-  // the HMM for a fixed number of time-steps (e.g. 100) and averaging the
-  // posteriors over those time-steps.  The exact values won't be very critical.
-  // Note: we renormalize each HMM-state to sum to one before doing this.
-  const CuVector<BaseFloat> &InitialProbs() const;
 
-  // This function outputs a modifified version of the FST that was used to
+  // returns the cold-start versions of the initial-probs of the HMM-states, for
+  // the FST passed to the constructor, stored as real probabilities, not in
+  // log-space.  This will actually a vector that's one for a particular state
+  // and zero elsewhere, since FSTs have just one initial state...
+  const CuVector<BaseFloat> &RealInitialProbs() const {
+    return real_initial_probs_;
+  }
+
+  // returns the warm-start (i.e. cut-point) versions of the initial-probs of
+  // the HMM-states (as real probabilities, not in log-space).  these are used
+  // when we are entering in the middle of a sequence.  They are approximate
+  // initial-probs obtained by running the HMM for a fixed number of time-steps
+  // (e.g. 100) and averaging the posteriors over those time-steps.
+  const CuVector<BaseFloat> &SplitPointInitialProbs() const {
+    return split_point_initial_probs_;
+  }
+
+
+  // Returns the final-probs of the HMM-states... these are only used when
+  // we are genuinely at the end of a sequence (not just at the end of a chunk).
+  // At the end of a chunk we'd use a vector of all ones.
+  const CuVector<BaseFloat> &RealFinalProbs() const {
+    return real_final_probs_;
+  }
+
+  /// This returns a vector of ones; it is used for symmetry with what happens
+  /// at the start.  (If we are at a split point we treat all states as final
+  /// with probability one).
+  const CuVector<BaseFloat> &SplitPointFinalProbs() const {
+    return split_point_final_probs_;
+  }
+
+  // This function outputs a modified version of the FST that was used to
   // build this object, that has an initial-state with epsilon transitions to
-  // each state, with weight determined by initial_probs_; and has each original
+  // each state, with weight determined by SplitPointInitialProbs(); and has each original
   // state being final with probability one (note: we remove epsilons).  This is
   // used in computing the 'penalty_logprob' of the Supervision objects, to
   // ensure that the objective function is never positive, which makes it more
@@ -98,25 +123,24 @@ class DenominatorGraph {
   // constructor of this object.  [note: ifst and ofst may be the same object.]
   // This function ensures that 'ofst' is ilabel sorted (which will be useful in
   // composition).
+  //
+  // CAUTION: this has become a little inexact/suboptimal now that we are
+  // distinguishing how the den-graph starts and terminates depending on
+  // whether we were at the end of a chunk or not.  The normalization FST
+  // only gives correct probs for interior chunks.  This only affects
+  // diagnostics, though.
   void GetNormalizationFst(const fst::StdVectorFst &ifst,
                            fst::StdVectorFst *ofst);
-
-  // This function is only used in testing code.
-  void ScaleInitialProbs(BaseFloat s) { initial_probs_.Scale(s); }
 
   // Use default copy constructor and assignment operator.
  private:
   // functions called from the constructor
   void SetTransitions(const fst::StdVectorFst &fst, int32 num_pfds);
 
-  // work out the initial-probs.  Note, there are no final-probs; we treat all
-  // states as final with probability one [we have a justification for this..
-  // assuming it's roughly a well-normalized HMM, this makes sense; note that we
-  // train on chunks, so the beginning and end of a chunk appear at arbitrary
-  // points in the sequence.  At both beginning and end of the chunk, we limit
-  // ourselves to only those pdf-ids that were allowed in the numerator
-  // sequence.
-  void SetInitialProbs(const fst::StdVectorFst &fst);
+
+  // work out the initial and final probability vectors real_initial_probs_
+  // through split_point_final_probs_.
+  void SetEdgeProbs(const fst::StdVectorFst &fst);
 
   // forward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
@@ -129,13 +153,26 @@ class DenominatorGraph {
   // This stores the actual transitions.
   CuArray<DenominatorGraphTransition> transitions_;
 
-  // The initial-probability of all states, used on the first frame of a
-  // sequence [although we also apply the constraint that on the first frame,
-  // only pdf-ids that were active on the 1st frame of the numerator, are
-  // active.  Because in general sequences won't start at the start of files, we
-  // make this a generic probability distribution close to the limiting
-  // distribution of the HMM.  This isn't too critical.
-  CuVector<BaseFloat> initial_probs_;
+  // The initial-probability of each state in the den-graph, used on the first
+  // frame of a sequence.  These are the real ones from the original compiled
+  // denominator graph-- for use when it's truly at the start of a sequence.
+  // This will actually be a zero-one vector.
+  CuVector<BaseFloat> real_initial_probs_;
+
+  // The initial-probs used for each state when a chunk starts in the middle of
+  // an utterance.  These are derived from the average occupation-prob, in the
+  // denominator FST, of each FST state.
+  CuVector<BaseFloat> split_point_initial_probs_;
+
+  // The final-probs of each state within the original compiled denominator
+  // graph.  These are used when the end of a chunk occurs at the end of
+  // an utterance.
+  CuVector<BaseFloat> real_final_probs_;
+
+  // These are "fake" final-probs for use when a chunk ends within an
+  // utterance.  They are all ones.
+  CuVector<BaseFloat> split_point_final_probs_;
+
 
   int32 num_pdfs_;
 };

@@ -390,8 +390,19 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
 
   ChainTrainingOptions opts;
 
+  bool all_boundary = (RandInt(0, 1) == 0);
+  KALDI_LOG << "All-boundary = " << std::boolalpha << all_boundary;
+  Matrix<BaseFloat> boundary_mask(4, num_sequences);
+  if (all_boundary) {
+    boundary_mask.Row(0).Set(1.0);
+    boundary_mask.Row(2).Set(1.0);
+  } else { // all not-boundary, i.e. all split-point.
+    boundary_mask.Row(1).Set(1.0);
+    boundary_mask.Row(3).Set(1.0);
+  }
   DenominatorComputation denominator_computation(opts, den_graph,
-                                                 num_sequences, nnet_output);
+                                                 num_sequences, nnet_output,
+                                                 boundary_mask);
 
   BaseFloat forward_prob = denominator_computation.Forward(),
       per_frame = forward_prob / (num_sequences * frames_per_sequence);
@@ -428,7 +439,8 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
 
     DenominatorComputation denominator_computation_perturbed(opts, den_graph,
                                                              num_sequences,
-                                                             nnet_output_perturbed);
+                                                             nnet_output_perturbed,
+                                                             boundary_mask);
 
     BaseFloat forward_prob_perturbed = denominator_computation_perturbed.Forward();
     observed_objf_changes(p) = forward_prob_perturbed - forward_prob;
@@ -615,7 +627,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    for (int32 i = 0; i < 3; i++) {
+    for (int32 i = 0; i < 4; i++) {
       kaldi::chain::ChainSupervisionTest();
       kaldi::chain::BreadthFirstTest();
     }

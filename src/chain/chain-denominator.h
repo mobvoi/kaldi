@@ -204,11 +204,15 @@ class DenominatorComputation {
     @param [in] nnet_output  The output of the neural network for this minibatch.
                        The rows must be ordered as (first frame of all sequences)
                        (second frame of all sequences), etc.
+    @param [in] boundary_masks  A matrix of dimension (4 x num_sequences); see
+                      documentation for class-member boundary_masks_ for more
+                      information.
   */
   DenominatorComputation(const ChainTrainingOptions &opts,
                          const DenominatorGraph &den_graph,
                          int32 num_sequences,
-                         const CuMatrixBase<BaseFloat> &nnet_output);
+                         const CuMatrixBase<BaseFloat> &nnet_output,
+                         const MatrixBase<BaseFloat> &boundary_masks);
 
   // Does the forward computation, and returns the total log-like summed over
   // all sequences.  You will have to scale this by any supervision weighting
@@ -306,6 +310,24 @@ class DenominatorComputation {
   // betas by in order to keep them in a good dynamic range.  The product of
   // them must be included in the total likelihood.
   CuVector<BaseFloat> log_correction_term_;
+
+  /*
+    A matrix of dimension (4 x num_sequences), passed in by the
+    user (derived from the real_starts and real_ends members of
+    chain::Supervision).
+    The rows are:
+
+  Row 0:
+    Contains a 1 for sequences where the first supervised
+    frame corresponds to the start of the original utterance,
+    and 0 elsewhere.
+  Row 1: The complement of row 0 (i.e. 1.0 minus row 0.)
+  Row 2: Contains a 1 for sequences where the last supervised
+    frame corresponds to the end of the original utterance,
+    and 0 elsewhere.
+  Row 3: The complement of row 2, i.e. 1.0 minus row 2.
+  */
+  CuMatrix<BaseFloat> boundary_masks_;
 
   bool ok_;
 };

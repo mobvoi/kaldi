@@ -30,7 +30,7 @@ DenominatorGraph::DenominatorGraph(const fst::StdVectorFst &fst,
                                    int32 num_pdfs):
     num_pdfs_(num_pdfs) {
   SetTransitions(fst, num_pdfs);
-  SetInitialProbs(fst);
+  SetEdgeProbs(fst);
 }
 
 const Int32Pair* DenominatorGraph::BackwardTransitions() const {
@@ -43,10 +43,6 @@ const Int32Pair* DenominatorGraph::ForwardTransitions() const {
 
 const DenominatorGraphTransition* DenominatorGraph::Transitions() const {
   return transitions_.Data();
-}
-
-const CuVector<BaseFloat>& DenominatorGraph::InitialProbs() const {
-  return initial_probs_;
 }
 
 void DenominatorGraph::SetTransitions(const fst::StdVectorFst &fst,
@@ -94,11 +90,11 @@ void DenominatorGraph::SetTransitions(const fst::StdVectorFst &fst,
   transitions_ = transitions;
 }
 
-void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
-  // we set only the start-state to have probability mass, and then 100
-  // iterations of HMM propagation, over which we average the probabilities.
-  // initial probs won't end up making a huge difference as we won't be using
-  // derivatives from the first few frames, so this isn't 100% critical.
+void DenominatorGraph::SetEdgeProbs(const fst::StdVectorFst &fst) {
+  // We first work out an 'average prob' of being in any given state, by running
+  // the HMM for 100 iteration.  We initially set only the start-state to have
+  // probability mass, and then 100 iterations of HMM propagation; we average
+  // the occupation probabilities over these 100 iterations.
   int32 num_iters = 100;
   int32 num_states = fst.NumStates();
 
@@ -138,18 +134,28 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
   }
 
   Vector<BaseFloat> avg_prob_float(avg_prob);
-  initial_probs_ = avg_prob_float;
+  split_point_initial_probs_ = avg_prob_float;
+  real_initial_probs_.Resize(num_states);
+  real_initial_probs_(fst.Start()) = 1.0;
+
+  Vector<BaseFloat> real_final_probs(num_states);
+  for (int32 s = 0; s < num_states; s++) {
+    real_final_probs(s) = exp(-fst.Final(s).Value());
+  }
+  real_final_probs_ = real_final_probs;
+  split_point_final_probs_.Resize(num_states);
+  split_point_final_probs_.Set(1.0);
 }
 
 void DenominatorGraph::GetNormalizationFst(const fst::StdVectorFst &ifst,
                                            fst::StdVectorFst *ofst) {
-  KALDI_ASSERT(ifst.NumStates() == initial_probs_.Dim());
+  KALDI_ASSERT(ifst.NumStates() == real_initial_probs_.Dim());
   if (&ifst != ofst)
     *ofst = ifst;
   int32 new_initial_state = ofst->AddState();
-  Vector<BaseFloat> initial_probs(initial_probs_);
+  Vector<BaseFloat> initial_probs(split_point_initial_probs_);
 
-  for (int32 s = 0; s < initial_probs_.Dim(); s++) {
+  for (int32 s = 0; s < initial_probs.Dim(); s++) {
     BaseFloat initial_prob = initial_probs(s);
     KALDI_ASSERT(initial_prob > 0.0);
     fst::StdArc arc(0, 0, fst::TropicalWeight(-log(initial_prob)), s);

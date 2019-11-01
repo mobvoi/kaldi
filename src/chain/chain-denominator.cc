@@ -29,7 +29,8 @@ DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
     int32 num_sequences,
-    const CuMatrixBase<BaseFloat> &nnet_output):
+    const CuMatrixBase<BaseFloat> &nnet_output,
+    const MatrixBase<BaseFloat> &boundary_masks):
     opts_(opts),
     den_graph_(den_graph),
     num_sequences_(num_sequences),
@@ -47,6 +48,7 @@ DenominatorComputation::DenominatorComputation(
     tot_prob_(num_sequences_, kUndefined),
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
+    boundary_masks_(boundary_masks),
     ok_(true) {
   // We don't let leaky_hmm_coefficient be exactly zero (although that would
   // make sense mathematically, corresponding to "turning off" the leaky HMM),
@@ -99,10 +101,16 @@ void DenominatorComputation::AlphaFirstFrame() {
                                    den_graph_.NumStates(),
                                    num_sequences_,
                                    num_sequences_);
-  // TODO (possible): It would be more efficient here if we implemented a
-  // CopyColsFromVec function in class CuMatrix.
+
   alpha_mat.SetZero();
-  alpha_mat.AddVecToCols(1.0, den_graph_.InitialProbs(), 0.0);
+
+  CuSubVector<BaseFloat> real_start_prob(boundary_masks_, 0),
+      split_point_start_prob(boundary_masks_, 1);
+
+  alpha_mat.AddVecVec(1.0, den_graph_.RealInitialProbs(),
+                      real_start_prob);
+  alpha_mat.AddVecVec(1.0, den_graph_.SplitPointInitialProbs(),
+                      split_point_start_prob);
 }
 
 
@@ -202,7 +210,7 @@ void DenominatorComputation::AlphaDash(int32 t) {
   alpha_sum_vec.AddRowSumMat(1.0, alpha_mat, 0.0);
 
   alpha_mat.AddVecVec(opts_.leaky_hmm_coefficient,
-                      den_graph_.InitialProbs(),
+                      den_graph_.SplitPointInitialProbs(),
                       alpha_sum_vec);
   // it's now alpha-dash.
 }
@@ -223,7 +231,7 @@ void DenominatorComputation::Beta(int32 t) {
       this_beta_dash + den_graph_.NumStates() * num_sequences_,
       num_sequences_);
   beta_dash_sum_vec.AddMatVec(opts_.leaky_hmm_coefficient, beta_dash_mat,
-                              kTrans, den_graph_.InitialProbs(), 0.0);
+                              kTrans, den_graph_.SplitPointInitialProbs(), 0.0);
   // we are computing beta in place.  After the following, beta-dash-mat
   // will contain the actual beta (i.e. the counterpart of alpha),
   // not the beta-dash.
@@ -250,6 +258,21 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
       num_sequences_);
 
   tot_prob_.AddRowSumMat(1.0, last_alpha_dash, 0.0);
+
+  CuSubVector<BaseFloat> boundary_prob(boundary_masks_, 2),
+      not_boundary_prob(boundary_masks_, 3);
+  CuVector<BaseFloat> temp(num_sequences_);
+
+  auto &tot_prob_not_boundary(temp);
+  tot_prob_not_boundary.AddMatVec(1.0, last_alpha_dash, kTrans,
+                                  den_graph_.SplitPointFinalProbs(), 0.0);
+  tot_prob_.AddVecVec(1.0, tot_prob_not_boundary,
+                      not_boundary_prob, 0.0);
+  auto &tot_prob_boundary(temp);
+  tot_prob_boundary.AddMatVec(1.0, last_alpha_dash, kTrans,
+                  den_graph_.RealFinalProbs(), 0.0);
+  tot_prob_.AddVecVec(1.0, tot_prob_boundary, boundary_prob, 1.0);
+
   // we should probably add an ApplyLog() function that takes a vector argument.
   tot_log_prob_ = tot_prob_;
   tot_log_prob_.ApplyLog();
@@ -275,7 +298,6 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
       log_inv_arbitrary_scales.Sum();
   return tot_log_prob + log_inv_arbitrary_scales_product;
 }
-
 
 
 bool DenominatorComputation::Backward(
@@ -325,10 +347,28 @@ void DenominatorComputation::BetaDashLastFrame() {
                                        num_sequences_,
                                        num_sequences_);
   CuVector<BaseFloat> inv_tot_prob(tot_prob_);
+  // the inversion comes from the derivative of log.
   inv_tot_prob.InvertElements();
   // the beta values at the end of the file only vary with the sequence-index,
   // not with the HMM-index.  We treat all states as having a final-prob of one.
-  beta_dash_mat.CopyRowsFromVec(inv_tot_prob);
+  beta_dash_mat.SetZero();
+  // CopyRowsFromVec(inv_tot_prob);
+
+  // Compare this backward code with the forward code in ComputeTotLogLike().
+  CuSubVector<BaseFloat> real_end_prob(boundary_masks_, 2),
+      split_point_end_prob(boundary_masks_, 3);
+
+  CuVector<BaseFloat> temp(num_sequences_);
+  auto &tot_prob_split_point(temp);
+  tot_prob_split_point.AddVecVec(1.0, split_point_end_prob,
+                                 inv_tot_prob, 0.0);
+  beta_dash_mat.AddVecVec(1.0, den_graph_.SplitPointFinalProbs(),
+                          tot_prob_split_point);
+  auto &tot_prob_real_end(temp);
+  tot_prob_real_end.AddVecVec(1.0, real_end_prob,
+                              inv_tot_prob, 0.0);
+  beta_dash_mat.AddVecVec(1.0, den_graph_.RealFinalProbs(),
+                          tot_prob_real_end);
 }
 
 void DenominatorComputation::BetaDashGeneralFrame(int32 t) {

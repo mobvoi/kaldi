@@ -404,6 +404,10 @@ bool ProtoSupervisionToSupervision(
   else
     supervision->label_dim = trans_model.NumTransitionIds();
   SortBreadthFirstSearch(&(supervision->fst));
+  supervision->real_starts.resize(1);
+  supervision->real_starts[0] = true;
+  supervision->real_ends.resize(1);
+  supervision->real_ends[0] = true;
   return true;
 }
 
@@ -456,6 +460,10 @@ void SupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   out_supervision->weight = supervision_.weight;
   out_supervision->frames_per_sequence = num_frames;
   out_supervision->label_dim = supervision_.label_dim;
+  out_supervision->real_starts.resize(1);
+  out_supervision->real_starts[0] = (begin_iter == frame_.begin());
+  out_supervision->real_ends.resize(1);
+  out_supervision->real_ends[0] = (end_iter == frame_.end());
 }
 
 void SupervisionSplitter::CreateRangeFst(
@@ -597,6 +605,9 @@ void Supervision::Write(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<AlignmentPdfs>");
     WriteIntegerVector(os, binary, alignment_pdfs);
   }
+  WriteToken(os, binary, "<RealStartsEnds>");
+  WriteIntegerVector(os, binary, real_starts);
+  WriteIntegerVector(os, binary, real_ends);
   WriteToken(os, binary, "</Supervision>");
 }
 
@@ -606,8 +617,10 @@ void Supervision::Swap(Supervision *other) {
   std::swap(frames_per_sequence, other->frames_per_sequence);
   std::swap(label_dim, other->label_dim);
   std::swap(fst, other->fst);
-  std::swap(e2e_fsts, other->e2e_fsts);
-  std::swap(alignment_pdfs, other->alignment_pdfs);
+  e2e_fsts.swap(other->e2e_fsts);
+  alignment_pdfs.swap(other->alignment_pdfs);
+  real_starts.swap(other->real_starts);
+  real_ends.swap(other->real_ends);
 }
 
 void Supervision::Read(std::istream &is, bool binary) {
@@ -658,6 +671,18 @@ void Supervision::Read(std::istream &is, bool binary) {
     ReadIntegerVector(is, binary, &alignment_pdfs);
   } else {
     alignment_pdfs.clear();
+  }
+  if (PeekToken(is, binary) == 'R') {
+    ExpectToken(is, binary, "<RealStartsEnds>");
+    ReadIntegerVector(is, binary, &real_starts);
+    ReadIntegerVector(is, binary, &real_ends);
+  } else {
+    /* Treat all starts and ends as chunk-internal, for previously written egs..
+       this is equivalent to the old behavior. */
+    real_starts.clear();
+    real_starts.resize(num_sequences, 0);
+    real_ends.clear();
+    real_ends.resize(num_sequences, 0);
   }
   ExpectToken(is, binary, "</Supervision>");
 }
@@ -732,9 +757,16 @@ void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
                  frames_per_sequence);
     output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
   }
-  output_supervision->alignment_pdfs.clear();
   // The program nnet3-chain-acc-lda-stats works on un-merged egs,
   // and there is no need to support merging of 'alignment_pdfs'
+  output_supervision->alignment_pdfs.clear();
+
+  output_supervision->real_starts.resize(num_seqs);
+  output_supervision->real_ends.resize(num_seqs);
+  for (int32 i = 0; i < num_seqs; i++) {
+    output_supervision->real_starts[i] = input[i]->real_starts[0];
+    output_supervision->real_ends[i] = input[i]->real_ends[0];
+  }
 }
 
 void MergeSupervision(const std::vector<const Supervision*> &input,
@@ -776,6 +808,14 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
   // The process of concatenation will have introduced epsilons.
   fst::RmEpsilon(&out_fst);
   SortBreadthFirstSearch(&out_fst);
+
+  output_supervision->real_starts.resize(num_inputs);
+  output_supervision->real_ends.resize(num_inputs);
+  for (int32 i = 0; i < num_inputs; i++) {
+    output_supervision->real_starts[i] = input[i]->real_starts[0];
+    output_supervision->real_ends[i] = input[i]->real_ends[0];
+  }
+
 }
 
 // This static function is called by AddWeightToSupervisionFst if the supervision
@@ -783,28 +823,32 @@ void MergeSupervision(const std::vector<const Supervision*> &input,
 // TryDeterminizeMinimize as it's not necessary (the graphs are already small)
 // and we don't do SortBreadthFirstSearch (the graph has self-loops so it can't
 // be sorted).
+//
+// TODO: take into account the real_starts/real_ends information by
+// modifying/cancelling-out begin/end probs where appropriate.
 bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
                                   Supervision *supervision) {
-    KALDI_ASSERT(supervision->num_sequences == 1);
-    KALDI_ASSERT(supervision->e2e_fsts.size() == 1);
-    // Remove epsilons before composing.  'normalization_fst' has no epsilons so
-    // the composed result will be epsilon free.
-    fst::StdVectorFst supervision_fst_noeps(supervision->e2e_fsts[0]);
-    fst::RmEpsilon(&supervision_fst_noeps);
+  KALDI_ASSERT(supervision->num_sequences == 1);
+  KALDI_ASSERT(supervision->e2e_fsts.size() == 1);
+  // Remove epsilons before composing.  'normalization_fst' has no epsilons so
+  // the composed result will be epsilon free.
+  fst::StdVectorFst supervision_fst_noeps(supervision->e2e_fsts[0]);
+  fst::RmEpsilon(&supervision_fst_noeps);
 
-    // Note: by default, 'Compose' will call 'Connect', so if the
-    // resulting FST is not connected, it will end up empty.
-    fst::StdVectorFst composed_fst;
-    fst::Compose(supervision_fst_noeps, normalization_fst,
-                 &composed_fst);
-    if (composed_fst.NumStates() == 0)
-      return false;
-    // Projection should not be necessary, as both FSTs are acceptors.
+  // Note: by default, 'Compose' will call 'Connect', so if the
+  // resulting FST is not connected, it will end up empty.
+  fst::StdVectorFst composed_fst;
+  fst::Compose(supervision_fst_noeps, normalization_fst,
+               &composed_fst);
+  if (composed_fst.NumStates() == 0)
+    return false;
+  // Projection should not be necessary, as both FSTs are acceptors.
 
-    supervision->e2e_fsts[0] = composed_fst;
-    KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
-    KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
-    return true;
+  supervision->e2e_fsts[0] = composed_fst;
+  KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
+  KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
+  return true;
+
 }
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
@@ -918,6 +962,9 @@ void Supervision::Check(const TransitionModel &trans_mdl) const {
     KALDI_ERR << "Invalid label-dim: " << label_dim
               << ", expected " << trans_mdl.NumPdfs()
               << " or " << trans_mdl.NumTransitionIds();
+  if (real_starts.size() != size_t(num_sequences) ||
+      real_ends.size() != size_t(num_sequences))
+    KALDI_ERR << "Real-starts/real-ends not the correct size";
   std::vector<int32> state_times;
   if (frames_per_sequence * num_sequences !=
       ComputeFstStateTimes(fst, &state_times))
@@ -1120,6 +1167,21 @@ bool ConvertSupervisionToUnconstrained(
   }
   return true;
 }
+
+void GetBoundaryMask(const Supervision &supervision,
+                     Matrix<BaseFloat> *boundary_mask) {
+  int32 num_sequences = supervision.num_sequences;
+  boundary_mask->Resize(4, num_sequences);
+  for (int32 s = 0; s < num_sequences; s++) {
+    BaseFloat real_start = supervision.real_starts[s],
+        real_end = supervision.real_ends[s];
+    (*boundary_mask)(0, s) = real_start;
+    (*boundary_mask)(1, s) = 1.0 - real_start;
+    (*boundary_mask)(2, s) = real_end;
+    (*boundary_mask)(3, s) = 1.0 - real_end;
+  }
+}
+
 
 
 }  // namespace chain

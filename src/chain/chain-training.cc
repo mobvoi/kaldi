@@ -114,9 +114,11 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
   { // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
     // we've freed the memory in this object.
+    Matrix<BaseFloat> boundary_mask;
+    GetBoundaryMask(supervision, &boundary_mask);
     DenominatorComputation denominator(opts, den_graph,
                                        supervision.num_sequences,
-                                       nnet_output);
+                                       nnet_output, boundary_mask);
 
     den_logprob_weighted = supervision.weight * denominator.Forward();
     if (nnet_output_deriv)
@@ -226,9 +228,11 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   { // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
     // we've freed the memory in this object.
+    Matrix<BaseFloat> boundary_mask;
+    GetBoundaryMask(supervision, &boundary_mask);
     DenominatorComputation denominator(opts, den_graph,
                                        supervision.num_sequences,
-                                       nnet_output);
+                                       nnet_output, boundary_mask);
 
     den_logprob_weighted = supervision.weight * denominator.Forward();
     if (nnet_output_deriv)

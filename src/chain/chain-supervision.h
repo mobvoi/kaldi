@@ -286,6 +286,15 @@ struct Supervision {
   // it will only be present for un-merged egs.
   std::vector<int32> alignment_pdfs;
 
+  // real_starts is a vector containing 1 for each chunk whose start is the start of
+  // a real sequence (as opposed to being a cut point), and 0 for others.
+  std::vector<int16> real_starts;
+  // real_ends is a vector containing 1 for each chunk whose start is the start of
+  // a real sequence (as opposed to being a cut point), and 0 for others.
+  std::vector<int16> real_ends;
+
+
+
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
                  label_dim(-1) { }
 
@@ -360,7 +369,7 @@ class SupervisionSplitter {
   // 'AddWeightToSupervisionFst', which not only adds the weights from the
   // normalization graph (derived from the normalization FST), but also removes
   // epsilons and ensures the states are sorted on time.
-  void GetFrameRange(int32 begin_frame, int32 frames_per_sequence,
+  void GetFrameRange(int32 begin_frame, int32 num_frames,
                      Supervision *supervision) const;
  private:
   // Creates an output FST covering frames begin_frame <= t < end_frame,
@@ -486,6 +495,25 @@ void GetWeightsForRanges(int32 range_length,
 bool ConvertSupervisionToUnconstrained(
     const TransitionModel &trans_mdl,
     Supervision *supervision);
+
+
+/**
+  Creates a 'boundary-mask' matrix which is derived from the 'real_starts'
+  and 'real_ends' members of supervision.  boundary_mask will, at exit, have
+  dimension (4 x supervision.num_sequences).  The rows will be:
+
+  Row 0:
+    Contains a 1 for sequences where the first supervised
+    frame corresponds to the start of the original utterance
+    (supervision.real_starts[s] == true) and 0 elsewhere.
+  Row 1: The complement of row 0 (i.e. 1.0 minus row 0.)
+  Row 2: Contains a 1 for sequences where the last supervised
+    frame corresponds to the end of the original utterance
+    (supervision.real_ends[s] == true) and 0 elsewhere.
+  Row 3: The complement of row 2, i.e. 1.0 minus row 2.
+*/
+void GetBoundaryMask(const Supervision &supervision,
+                     Matrix<BaseFloat> *boundary_mask);
 
 
 typedef TableWriter<KaldiObjectHolder<Supervision> > SupervisionWriter;
