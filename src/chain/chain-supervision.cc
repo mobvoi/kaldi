@@ -437,7 +437,7 @@ void SupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   // Note: end_frame is not included in the range of frames that the
   // output supervision object covers; it's one past the end.
   KALDI_ASSERT(num_frames > 0 && begin_frame >= 0 &&
-               begin_frame + num_frames <=
+               end_frame <=
                supervision_.num_sequences * supervision_.frames_per_sequence);
   std::vector<int32>::const_iterator begin_iter =
       std::lower_bound(frame_.begin(), frame_.end(), begin_frame),
@@ -461,9 +461,9 @@ void SupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   out_supervision->frames_per_sequence = num_frames;
   out_supervision->label_dim = supervision_.label_dim;
   out_supervision->real_starts.resize(1);
-  out_supervision->real_starts[0] = (begin_iter == frame_.begin());
+  out_supervision->real_starts[0] = (begin_frame == 0);
   out_supervision->real_ends.resize(1);
-  out_supervision->real_ends[0] = (end_iter == frame_.end());
+  out_supervision->real_ends[0] = (end_frame >= frame_.back());
 }
 
 void SupervisionSplitter::CreateRangeFst(
@@ -737,7 +737,8 @@ Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
     label_dim(other.label_dim), fst(other.fst),
-    e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs) { }
+    e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs),
+    real_starts(other.real_starts), real_ends(other.real_ends) { }
 
 
 // This static function is called by MergeSupervision if the supervisions
@@ -947,7 +948,9 @@ void SplitIntoRanges(int32 num_frames,
 bool Supervision::operator == (const Supervision &other) const {
   return weight == other.weight && num_sequences == other.num_sequences &&
       frames_per_sequence == other.frames_per_sequence &&
-      label_dim == other.label_dim && fst::Equal(fst, other.fst);
+      label_dim == other.label_dim &&
+      real_starts == other.real_starts && real_ends == other.real_ends &&
+      fst::Equal(fst, other.fst);
 }
 
 void Supervision::Check(const TransitionModel &trans_mdl) const {
