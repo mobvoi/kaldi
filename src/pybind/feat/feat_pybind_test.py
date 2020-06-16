@@ -11,15 +11,13 @@ import unittest
 import numpy as np
 
 import kaldi
-from kaldi import feat
 from kaldi import SequentialWaveReader
 from kaldi import SequentialMatrixReader
 
 
 class TestFeat(unittest.TestCase):
-
     def test_mfcc(self):
-        mfcc = feat.Mfcc(feat.MfccOptions())
+        mfcc = kaldi.Mfcc(kaldi.MfccOptions())
         reader = SequentialWaveReader('ark:wav.ark')
         # gold set is feature extracted using featbin/compute-mfcc-feats
         gold_reader = SequentialMatrixReader('ark:feat.ark')

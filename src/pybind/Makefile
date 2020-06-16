@@ -27,7 +27,7 @@ LIBFILE_EXTENSION := $(PYBIND_EXTENSION)
 # pybind11 is heavily templated and generates code that is bloated before optimization.
 # -flto is link time optimization which apparently is important.
 ifndef CI_TARGETS
-  LTOFLAG = -flto
+  # LTOFLAG = -flto
 endif
 
 CXXFLAGS += -O3 $(LTOFLAG) -I.
@@ -44,7 +44,6 @@ chain/chain_den_graph_pybind.cc \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
 chain/chain_training_pybind.cc \
-ctc/ctc_pybind.cc \
 cudamatrix/cu_device_pybind.cc \
 cudamatrix/cu_matrix_pybind.cc \
 cudamatrix/cu_vector_pybind.cc \
@@ -59,6 +58,7 @@ dlpack/dlpack_submatrix.cc \
 dlpack/dlpack_subvector.cc \
 feat/feat_pybind.cc \
 feat/feature_pybind.cc \
+feat/feature_window_pybind.cc \
 feat/online_feature_pybind.cc \
 feat/wave_reader_pybind.cc \
 fst/arc_pybind.cc \
@@ -126,6 +126,7 @@ EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(
 EXTRA_LDLIBS += ../../tools/openfst/lib/libfstscript.so
 
 LDFLAGS += -Wl,-rpath=$(CURDIR)/../../tools/openfst/lib
+LDFLAGS += -Wl,-rpath=/opt/intel/compilers_and_libraries_2019.2.187/linux/mkl/lib/intel64_lin
 
 LIBFILE=$(LIBNAME)$(LIBFILE_EXTENSION)
 
@@ -153,11 +154,6 @@ util
 .PHONY: all clean test
 
 all: $(LIBFILE)
-
-include ctc/ctc.mk
-
-ctc/%.o: ctc/%.cc $(LIB_WARP_CTC)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 %.o: %.cc
 	$(CXX) -c $(CXXFLAGS) -o $@ $<

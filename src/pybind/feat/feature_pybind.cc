@@ -17,8 +17,8 @@
 
 #include "feat/feature_pybind.h"
 
-#include "feat/feature-mfcc.h"
 #include "feat/feature-fbank.h"
+#include "feat/feature-mfcc.h"
 
 using namespace kaldi;
 
@@ -31,21 +31,6 @@ void offline_feature(py::module& m, const std::string& feat_type) {
 }
 
 void pybind_feature(py::module& m) {
-  py::class_<FrameExtractionOptions>(m, "FrameExtractionOptions")
-      .def_readwrite("samp_freq", &FrameExtractionOptions::samp_freq)
-      .def_readwrite("frame_shift_ms", &FrameExtractionOptions::frame_shift_ms)
-      .def_readwrite("frame_length_ms", &FrameExtractionOptions::frame_length_ms)
-      .def_readwrite("dither", &FrameExtractionOptions::dither)
-      .def_readwrite("preemph_coeff", &FrameExtractionOptions::preemph_coeff)
-      .def_readwrite("remove_dc_offset", &FrameExtractionOptions::remove_dc_offset)
-      .def_readwrite("window_type", &FrameExtractionOptions::window_type)
-      .def_readwrite("round_to_power_of_two", &FrameExtractionOptions::round_to_power_of_two)
-      .def_readwrite("blackman_coeff", &FrameExtractionOptions::blackman_coeff)
-      .def_readwrite("snip_edges", &FrameExtractionOptions::snip_edges)
-      .def_readwrite("allow_downsample", &FrameExtractionOptions::allow_downsample)
-      .def_readwrite("allow_upsample", &FrameExtractionOptions::allow_upsample)
-      .def_readwrite("max_feature_vectors", &FrameExtractionOptions::max_feature_vectors);
-
   py::class_<MelBanksOptions>(m, "MelBanksOptions")
       .def(py::init<const int&>())
       .def_readwrite("num_bins", &MelBanksOptions::num_bins)

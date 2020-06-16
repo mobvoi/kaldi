@@ -36,10 +36,10 @@ from kaldi_pybind.nnet3 import _NnetChainExampleWriter
 from kaldi_pybind.nnet3 import _SequentialNnetExampleReader
 from kaldi_pybind.nnet3 import _RandomAccessNnetExampleReader
 
-from kaldi_pybind.feat import _SequentialWaveReader
-from kaldi_pybind.feat import _RandomAccessWaveReader
-from kaldi_pybind.feat import _SequentialWaveInfoReader
-from kaldi_pybind.feat import _RandomAccessWaveInfoReader
+from kaldi_pybind import _SequentialWaveReader
+from kaldi_pybind import _RandomAccessWaveReader
+from kaldi_pybind import _SequentialWaveInfoReader
+from kaldi_pybind import _RandomAccessWaveInfoReader
 
 from kaldi_pybind import _SequentialBaseFloatMatrixReader
 from kaldi_pybind import _RandomAccessBaseFloatMatrixReader
@@ -196,6 +196,7 @@ class SequentialNnetChainExampleReader(_SequentialReaderBase,
                                        _SequentialNnetChainExampleReader):
     '''Sequential table reader for nnet chain examples.'''
     pass
+
 
 class SequentialNnetExampleReader(_SequentialReaderBase,
                                   _SequentialNnetExampleReader):
@@ -358,10 +359,12 @@ class RandomAccessNnetChainExampleReader(_RandomAccessReaderBase,
     '''Random access table reader for nnet chain examples.'''
     pass
 
+
 class RandomAccessNnetExampleReader(_RandomAccessReaderBase,
                                     _RandomAccessNnetExampleReader):
     '''Random access table reader for nnet examples.'''
     pass
+
 
 class RandomAccessWaveReader(_RandomAccessReaderBase, _RandomAccessWaveReader):
     '''Random access table reader for wave files.'''
@@ -440,7 +443,7 @@ class _WriterBase(object):
     def __exit__(self, type, value, traceback):
         if self.IsOpen():
             self.Close()
-    
+
     def __setitem__(self, key, value):
         self.Write(key, value)
 
@@ -546,15 +549,13 @@ class CompactLatticeWriter(_WriterBase, _CompactLatticeWriter):
 if False:
     # TODO(fangjun): enable the following once other wrappers are added
 
-    class SequentialDoubleVectorReader(_SequentialReaderBase,
-                                       _kaldi_table.SequentialDoubleVectorReader
-                                      ):
+    class SequentialDoubleVectorReader(
+            _SequentialReaderBase, _kaldi_table.SequentialDoubleVectorReader):
         '''Sequential table reader for double precision vectors.'''
         pass
 
-    class SequentialDoubleMatrixReader(_SequentialReaderBase,
-                                       _kaldi_table.SequentialDoubleMatrixReader
-                                      ):
+    class SequentialDoubleMatrixReader(
+            _SequentialReaderBase, _kaldi_table.SequentialDoubleMatrixReader):
         '''Sequential table reader for double precision matrices.'''
         pass
 
@@ -584,9 +585,8 @@ if False:
         '''Sequential table reader for FSTs over the KWS index semiring.'''
         pass
 
-    class SequentialRnnlmExampleReader(_SequentialReaderBase,
-                                       _kaldi_table.SequentialRnnlmExampleReader
-                                      ):
+    class SequentialRnnlmExampleReader(
+            _SequentialReaderBase, _kaldi_table.SequentialRnnlmExampleReader):
         '''Sequential table reader for RNNLM examples.'''
         pass
 
@@ -640,12 +640,14 @@ if False:
         pass
 
     class RandomAccessPosteriorReader(_RandomAccessReaderBase,
-                                      _kaldi_table.RandomAccessPosteriorReader):
+                                      _kaldi_table.RandomAccessPosteriorReader
+                                      ):
         '''Random access table reader for frame posteriors.'''
         pass
 
     class RandomAccessGaussPostReader(_RandomAccessReaderBase,
-                                      _kaldi_table.RandomAccessGaussPostReader):
+                                      _kaldi_table.RandomAccessGaussPostReader
+                                      ):
         '''Random access table reader for Gaussian-level frame posteriors.'''
         pass
 

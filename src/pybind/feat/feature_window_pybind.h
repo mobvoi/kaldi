@@ -1,7 +1,6 @@
-// pybind/ctc/ctc_pybind.h
+// pybind/feat/feature_window_pybind.h
 
-// Copyright 2020   Mobvoi AI Lab, Beijing, China
-//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2020   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -16,11 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_CTC_CTC_PYBIND_H_
-#define KALDI_PYBIND_CTC_CTC_PYBIND_H_
+#ifndef KALDI_PYBIND_FEAT_FEATURE_WINDOW_PYBIND_H_
+#define KALDI_PYBIND_FEAT_FEATURE_WINDOW_PYBIND_H_
 
 #include "pybind/kaldi_pybind.h"
 
-void pybind_ctc(py::module& m);
+void pybind_feature_window(py::module& m);
 
-#endif  // KALDI_PYBIND_CTC_CTC_PYBIND_H_
+#endif  // KALDI_PYBIND_FEAT_FEATURE_WINDOW_PYBIND_H_

@@ -18,12 +18,12 @@
 #include "feat/feat_pybind.h"
 
 #include "feat/feature_pybind.h"
+#include "feat/feature_window_pybind.h"
 #include "feat/online_feature_pybind.h"
 #include "feat/wave_reader_pybind.h"
 
-void pybind_feat(py::module& _m) {
-  py::module m = _m.def_submodule("feat", "feat pybind for Kaldi");
-
+void pybind_feat(py::module& m) {
+  pybind_feature_window(m);
   pybind_feature(m);
   pybind_online_feature(m);
   pybind_wave_reader(m);

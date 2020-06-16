@@ -16,7 +16,6 @@ import kaldi
 
 
 class TestHmmTopology(unittest.TestCase):
-
     def test(self):
         tmp = mkdtemp()
         rxfilename = '{}/topo'.format(tmp)
@@ -55,6 +54,8 @@ class TestHmmTopology(unittest.TestCase):
         for i in range(3):
             self.assertEqual(entry[i].forward_pdf_class, i)
             self.assertEqual(entry[i].self_loop_pdf_class, i)
+        self.assertEqual(topo.MinLength(1), 3)
+        self.assertEqual(topo.GetPhoneToNumPdfClasses(), [-1] + [3] * 8)
 
         # -1 is kNoPdf
         self.assertEqual(entry[3].forward_pdf_class, -1)
