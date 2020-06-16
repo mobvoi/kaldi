@@ -18,6 +18,7 @@
 #include "feat/feature_fbank_pybind.h"
 
 #include "feat/feature-fbank.h"
+#include "feat/feature_common_pybind.h"
 
 using namespace kaldi;
 
@@ -71,4 +72,7 @@ static void pybind_fbank_options(py::module& m) {
   });
 }
 
-void pybind_feature_fbank(py::module& m) { pybind_fbank_options(m); }
+void pybind_feature_fbank(py::module& m) {
+  pybind_fbank_options(m);
+  pybind_offline_feature<FbankComputer>(m, "Fbank");
+}

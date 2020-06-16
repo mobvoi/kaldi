@@ -23,7 +23,7 @@ using namespace kaldi;
 
 static void pybind_mel_banks_options(py::module& m) {
   using PyClass = MelBanksOptions;
-  DEF_CLASS(MelBanksOptions);
+  DEF_CLASS("MelBanksOptions");
   pyclass.def(py::init<int>(), py::arg("num_bins") = 25);
   DEF_P(num_bins);
   DEF_P(low_freq);

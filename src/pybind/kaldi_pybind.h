@@ -30,7 +30,7 @@ namespace py = pybind11;
 template <typename... Args>
 using overload_cast_ = py::detail::overload_cast_impl<Args...>;
 
-#define DEF_CLASS(name) py::class_<PyClass> pyclass(m, #name);
+#define DEF_CLASS(name) py::class_<PyClass> pyclass(m, name);
 #define DEF_INIT() pyclass.def(py::init<>())
 #define DEF(name) pyclass.def(#name, &PyClass::name)
 #define DEF2(name, method) pyclass.def(#name, &PyClass::method)

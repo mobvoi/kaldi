@@ -43,5 +43,4 @@ void pybind_feature(py::module& m) {
       .def_readwrite("htk_compat", &MfccOptions::htk_compat);
 
   offline_feature<MfccComputer>(m, "Mfcc");
-  offline_feature<FbankComputer>(m, "Fbank");
 }
