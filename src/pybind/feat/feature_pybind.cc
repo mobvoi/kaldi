@@ -31,16 +31,6 @@ void offline_feature(py::module& m, const std::string& feat_type) {
 }
 
 void pybind_feature(py::module& m) {
-  py::class_<MelBanksOptions>(m, "MelBanksOptions")
-      .def(py::init<const int&>())
-      .def_readwrite("num_bins", &MelBanksOptions::num_bins)
-      .def_readwrite("low_freq", &MelBanksOptions::low_freq)
-      .def_readwrite("high_freq", &MelBanksOptions::high_freq)
-      .def_readwrite("vtln_low", &MelBanksOptions::vtln_low)
-      .def_readwrite("vtln_high", &MelBanksOptions::vtln_high)
-      .def_readwrite("debug_mel", &MelBanksOptions::debug_mel)
-      .def_readwrite("htk_mode", &MelBanksOptions::htk_mode);
-
   py::class_<MfccOptions>(m, "MfccOptions")
       .def(py::init<>())
       .def_readwrite("frame_opts", &MfccOptions::frame_opts)
@@ -51,17 +41,6 @@ void pybind_feature(py::module& m) {
       .def_readwrite("raw_energy", &MfccOptions::raw_energy)
       .def_readwrite("cepstral_lifter", &MfccOptions::cepstral_lifter)
       .def_readwrite("htk_compat", &MfccOptions::htk_compat);
-
-  py::class_<FbankOptions>(m, "FbankOptions")
-      .def(py::init<>())
-      .def_readwrite("frame_opts", &FbankOptions::frame_opts)
-      .def_readwrite("mel_opts", &FbankOptions::mel_opts)
-      .def_readwrite("use_energy", &FbankOptions::use_energy)
-      .def_readwrite("energy_floor", &FbankOptions::energy_floor)
-      .def_readwrite("raw_energy", &FbankOptions::raw_energy)
-      .def_readwrite("use_log_fbank", &FbankOptions::use_log_fbank)
-      .def_readwrite("use_power", &FbankOptions::use_power)
-      .def_readwrite("htk_compat", &FbankOptions::htk_compat);
 
   offline_feature<MfccComputer>(m, "Mfcc");
   offline_feature<FbankComputer>(m, "Fbank");

@@ -57,8 +57,10 @@ dlpack/dlpack_pybind.cc \
 dlpack/dlpack_submatrix.cc \
 dlpack/dlpack_subvector.cc \
 feat/feat_pybind.cc \
+feat/feature_fbank_pybind.cc \
 feat/feature_pybind.cc \
 feat/feature_window_pybind.cc \
+feat/mel_computations_pybind.cc \
 feat/online_feature_pybind.cc \
 feat/wave_reader_pybind.cc \
 fst/arc_pybind.cc \

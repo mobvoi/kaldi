@@ -1,6 +1,6 @@
-// pybind/feat/feat_pybind.cc
+// pybind/feat/feature_fbank_pybind.h
 
-// Copyright 2019   Microsoft Corporation (author: Xingyu Na)
+// Copyright 2020   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -15,20 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "feat/feat_pybind.h"
+#ifndef KALDI_PYBIND_FEAT_FEATURE_FBANK_PYBIND_H_
+#define KALDI_PYBIND_FEAT_FEATURE_FBANK_PYBIND_H_
 
-#include "feat/feature_fbank_pybind.h"
-#include "feat/feature_pybind.h"
-#include "feat/feature_window_pybind.h"
-#include "feat/mel_computations_pybind.h"
-#include "feat/online_feature_pybind.h"
-#include "feat/wave_reader_pybind.h"
+#include "pybind/kaldi_pybind.h"
 
-void pybind_feat(py::module& m) {
-  pybind_feature_window(m);
-  pybind_mel_computations(m);
-  pybind_feature_fbank(m);
-  pybind_feature(m);
-  pybind_online_feature(m);
-  pybind_wave_reader(m);
-}
+void pybind_feature_fbank(py::module& m);
+
+#endif  // KALDI_PYBIND_FEAT_FEATURE_FBANK_PYBIND_H_

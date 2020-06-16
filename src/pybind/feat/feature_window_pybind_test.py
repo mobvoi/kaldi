@@ -28,6 +28,9 @@ class TestFeatureWindow(unittest.TestCase):
         self.assertEqual(opts.allow_upsample, False)
         self.assertEqual(opts.max_feature_vectors, -1)
 
+        opts.samp_freq = 48000
+        self.assertEqual(opts.samp_freq, 48000)
+
 
 if __name__ == '__main__':
     unittest.main()
