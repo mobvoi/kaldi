@@ -27,8 +27,14 @@ void pybind_offline_feature(py::module& m, const char* name) {
   using Options = typename PyClass::Options;
   DEF_CLASS(name);
   pyclass.def(py::init<const Options&>(), py::arg("opts"));
-  DEF(ComputeFeatures);
   DEF(Dim);
+  pyclass.def("ComputeFeatures",
+              [](PyClass* self, const VectorBase<BaseFloat>& wave,
+                 BaseFloat sample_freq, BaseFloat vtln_warp) {
+                Matrix<BaseFloat> features;
+                self->ComputeFeatures(wave, sample_freq, vtln_warp, &features);
+                return features;
+              });
 }
 
 #endif  // KALDI_PYBIND_FEAT_FEATURE_COMMON_PYBIND_H_

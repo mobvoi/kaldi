@@ -31,9 +31,18 @@ template <typename... Args>
 using overload_cast_ = py::detail::overload_cast_impl<Args...>;
 
 #define DEF_CLASS(name) py::class_<PyClass> pyclass(m, name);
+
 #define DEF_INIT() pyclass.def(py::init<>())
+
 #define DEF(name) pyclass.def(#name, &PyClass::name)
+
 #define DEF2(name, method) pyclass.def(#name, &PyClass::method)
+
+#define DEF_REF(name) \
+  pyclass.def(#name, &PyClass::name, py::return_value_policy::reference)
+
+#define DEF2_REF(name, method) \
+  pyclass.def(#name, &PyClass::method, py::return_value_policy::reference)
 
 #define DEF_P(name) pyclass.def_readwrite(#name, &PyClass::name)
 

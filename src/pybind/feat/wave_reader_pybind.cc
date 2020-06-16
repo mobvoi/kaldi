@@ -22,43 +22,41 @@
 
 using namespace kaldi;
 
-void pybind_wave_reader(py::module& m) {
+static void pybind_wave_info(py::module& m) {
   m.attr("kWaveSampleMax") = py::cast(kWaveSampleMax);
-
-  py::class_<WaveInfo>(m, "WaveInfo")
-      .def(py::init<>())
-      .def("IsStreamed", &WaveInfo::IsStreamed,
-           "Is stream size unknown? Duration and SampleCount not valid if true.")
-      .def("SampFreq", &WaveInfo::SampFreq,
-           "Sample frequency, Hz.")
-      .def("SampleCount", &WaveInfo::SampleCount,
-           "Number of samples in stream. Invalid if IsStreamed() is true.")
-      .def("Duration", &WaveInfo::Duration,
-           "Approximate duration, seconds. Invalid if IsStreamed() is true.")
-      .def("NumChannels", &WaveInfo::NumChannels,
-           "Number of channels, 1 to 16.")
-      .def("BlockAlign", &WaveInfo::BlockAlign,
-           "Bytes per sample.")
-      .def("DataBytes", &WaveInfo::DataBytes,
-           "Wave data bytes. Invalid if IsStreamed() is true.")
-      .def("ReverseBytes", &WaveInfo::ReverseBytes,
-           "Is data file byte order different from machine byte order?");
-
-  py::class_<WaveData>(m, "WaveData")
-      .def(py::init<>())
-      .def(py::init<const float, const Matrix<float>>(),
-           py::arg("samp_freq"), py::arg("data"))
-      .def("Duration", &WaveData::Duration,
-           "Returns the duration in seconds")
-      .def("Data", &WaveData::Data, py::return_value_policy::reference)
-      .def("SampFreq", &WaveData::SampFreq)
-      .def("Clear", &WaveData::Clear)
-      .def("CopyFrom", &WaveData::CopyFrom)
-      .def("Swap", &WaveData::Swap);
-
-  pybind_sequential_table_reader<WaveHolder>(m, "_SequentialWaveReader");
-  pybind_sequential_table_reader<WaveInfoHolder>(m, "_SequentialWaveInfoReader");
-  pybind_random_access_table_reader<WaveHolder>(m, "_RandomAccessWaveReader");
-  pybind_random_access_table_reader<WaveInfoHolder>(m, "_RandomAccessWaveInfoReader");
+  using PyClass = WaveInfo;
+  DEF_CLASS("WaveInfo");
+  DEF_INIT();
+  DEF(IsStreamed);
+  DEF(SampFreq);
+  DEF(SampleCount);
+  DEF(Duration);
+  DEF(NumChannels);
+  DEF(BlockAlign);
+  DEF(DataBytes);
+  DEF(ReverseBytes);
 }
 
+static void pybind_wave_data(py::module& m) {
+  using PyClass = WaveData;
+  DEF_CLASS("WaveData");
+  DEF_INIT();
+  pyclass.def(py::init<const float, const Matrix<float>>(),
+              py::arg("samp_freq"), py::arg("data"));
+  DEF_REF(Data);
+  DEF(SampFreq);
+  DEF(Duration);
+  DEF(Clear);
+}
+
+void pybind_wave_reader(py::module& m) {
+  pybind_wave_info(m);
+  pybind_wave_data(m);
+
+  pybind_sequential_table_reader<WaveHolder>(m, "_SequentialWaveReader");
+  pybind_sequential_table_reader<WaveInfoHolder>(m,
+                                                 "_SequentialWaveInfoReader");
+  pybind_random_access_table_reader<WaveHolder>(m, "_RandomAccessWaveReader");
+  pybind_random_access_table_reader<WaveInfoHolder>(
+      m, "_RandomAccessWaveInfoReader");
+}

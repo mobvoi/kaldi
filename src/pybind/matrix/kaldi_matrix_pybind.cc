@@ -36,6 +36,12 @@ void pybind_kaldi_matrix(py::module& m) {
       .def("NumRows", &MatrixBase<float>::NumRows, "Return number of rows")
       .def("NumCols", &MatrixBase<float>::NumCols, "Return number of columns")
       .def("Stride", &MatrixBase<float>::Stride, "Return stride")
+      .def(
+          "Row",
+          [](const MatrixBase<float>& self, MatrixIndexT i) {
+            return self.Row(i);
+          },
+          py::keep_alive<0, 1>())
       .def("__repr__",
            [](const MatrixBase<float>& b) -> std::string {
              std::ostringstream str;
@@ -104,9 +110,10 @@ void pybind_kaldi_matrix(py::module& m) {
 
   py::class_<DLPackSubMatrix<float>, SubMatrix<float>>(m,
                                                        "DLPackFloatSubMatrix")
-      .def("from_dlpack",
-           [](py::capsule* capsule) { return SubMatrixFromDLPack(capsule); },
-           py::return_value_policy::take_ownership);
+      .def(
+          "from_dlpack",
+          [](py::capsule* capsule) { return SubMatrixFromDLPack(capsule); },
+          py::return_value_policy::take_ownership);
 
   py::class_<Matrix<double>, std::unique_ptr<Matrix<double>, py::nodelete>>(
       m, "DoubleMatrix",
