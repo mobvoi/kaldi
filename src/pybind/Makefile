@@ -99,6 +99,8 @@ nnet3/nnet_nnet_pybind.cc \
 nnet3/nnet_normalize_component_pybind.cc \
 nnet3/nnet_simple_component_pybind.cc \
 tests/test_dlpack_subvector.cc \
+tree/context_dep_pybind.cc \
+tree/tree_pybind.cc \
 util/kaldi_holder_pybind.cc \
 util/kaldi_io_pybind.cc \
 util/parse_options_pybind.cc \

@@ -33,6 +33,7 @@
 #include "lat/lat_pybind.h"
 #include "matrix/matrix_pybind.h"
 #include "nnet3/nnet3_pybind.h"
+#include "tree/tree_pybind.h"
 #include "util/util_pybind.h"
 
 PYBIND11_MODULE(kaldi_pybind, m) {
@@ -40,6 +41,7 @@ PYBIND11_MODULE(kaldi_pybind, m) {
 
   pybind_matrix(m);
   pybind_itf(m);
+  pybind_tree(m);
   pybind_util(m);
   pybind_feat(m);
 

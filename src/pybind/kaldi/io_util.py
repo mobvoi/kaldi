@@ -97,9 +97,7 @@ def write_mat(mat, wxfilename, binary=True):
     else:
         write_header = False
 
-    output = kaldi_pybind.Output(filename=wxfilename,
-                                 binary=binary,
-                                 write_header=write_header)
+    output = kaldi_pybind.Output(filename=wxfilename, binary=binary, write_header=write_header)
 
     assert output.IsOpen(), 'Failed to create {}'.format(wxfilename)
 
@@ -140,3 +138,16 @@ def read_nnet3_model(rxfilename):
     ki.Close()
 
     return nnet
+
+
+def read_tree(rxfilename):
+    ki = kaldi_pybind.Input()
+    is_opened, is_binary = ki.Open(rxfilename, read_header=True)
+    if not is_opened:
+        raise FileNotOpenException('Failed to open {}'.format(rxfilename))
+
+    ctx_dep = kaldi_pybind.ContextDependency()
+    ctx_dep.Read(ki.Stream(), is_binary)
+
+    ki.Close()
+    return ctx_dep
