@@ -1,7 +1,6 @@
-// pybind/lat/lat_pybind.cc
+// pybind/lat/phone_align_lattice_pybind.h
 
-// Copyright 2020   Mobvoi AI Lab, Beijing, China
-//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2020   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -16,15 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lat/lat_pybind.h"
+#ifndef KALDI_PYBIND_LAT_PHONE_ALIGN_LATTICE_PYBIND_H_
+#define KALDI_PYBIND_LAT_PHONE_ALIGN_LATTICE_PYBIND_H_
 
-#include "lat/kaldi_lattice_pybind.h"
-#include "lat/phone_align_lattice_pybind.h"
+#include "pybind/kaldi_pybind.h"
 
-void pybind_lat(py::module& m) {
-  pybind_kaldi_lattice(m);
-  pybind_phone_align_lattice(m);
+void pybind_phone_align_lattice(py::module& m);
 
-  // pybind_determinize_lattice_pruned is wrapped in fst/fst_pybind.cc
-  // since it is in the `fst` namespace
-}
+#endif  // KALDI_PYBIND_LAT_PHONE_ALIGN_LATTICE_PYBIND_H_

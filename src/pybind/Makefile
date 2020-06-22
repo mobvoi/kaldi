@@ -83,6 +83,7 @@ kaldi_pybind.cc \
 lat/determinize_lattice_pruned_pybind.cc \
 lat/kaldi_lattice_pybind.cc \
 lat/lat_pybind.cc \
+lat/phone_align_lattice_pybind.cc \
 matrix/compressed_matrix_pybind.cc \
 matrix/kaldi_matrix_pybind.cc \
 matrix/kaldi_vector_pybind.cc \
