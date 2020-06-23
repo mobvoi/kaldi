@@ -21,5 +21,12 @@ class TestChainSupervision(unittest.TestCase):
         print(supervision)
 
 
+class TestSupervisionOptions(unittest.TestCase):
+
+    def test(self):
+        opts = chain.SupervisionOptions()
+        print(opts)
+
+
 if __name__ == '__main__':
     unittest.main()
