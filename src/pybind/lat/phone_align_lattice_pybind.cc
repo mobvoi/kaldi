@@ -17,6 +17,7 @@
 
 #include "lat/phone_align_lattice_pybind.h"
 
+#include "lat/lattice-functions.h"
 #include "lat/phone-align-lattice.h"
 
 using namespace kaldi;
@@ -44,10 +45,15 @@ void pybind_phone_align_lattice(py::module& m) {
   m.def(
       "PhoneAlignLattice",
       [](const CompactLattice& lat, const TransitionModel& tmodel,
-         const PhoneAlignLatticeOptions& opts) -> CompactLattice {
+         const PhoneAlignLatticeOptions& opts)
+          -> std::pair<bool, CompactLattice> {
+        bool is_ok = false;
         CompactLattice lat_out;
-        PhoneAlignLattice(lat, tmodel, opts, &lat_out);
-        return lat_out;
+        is_ok = PhoneAlignLattice(lat, tmodel, opts, &lat_out);
+        if (is_ok && lat_out.Start() != fst::kNoStateId) {
+          TopSortCompactLatticeIfNeeded(&lat_out);
+        }
+        return std::make_pair(is_ok, lat_out);
       },
       py::arg("lat"), py::arg("tmodel"), py::arg("opts"));
 }

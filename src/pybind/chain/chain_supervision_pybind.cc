@@ -159,12 +159,11 @@ void pybind_chain_supervision(py::module& m) {
       "PhoneLatticeToProtoSupervision",
       [](const SupervisionOptions& opts,
          const CompactLattice& clat) -> std::pair<bool, ProtoSupervision> {
-        // return a pair: (is_succeeded, ProtoSupervision)
-        bool is_succeeded = false;
+        // return a pair: (is_ok, ProtoSupervision)
+        bool is_ok = false;
         ProtoSupervision proto_supervision;
-        is_succeeded =
-            PhoneLatticeToProtoSupervision(opts, clat, &proto_supervision);
-        return std::make_pair(is_succeeded, proto_supervision);
+        is_ok = PhoneLatticeToProtoSupervision(opts, clat, &proto_supervision);
+        return std::make_pair(is_ok, proto_supervision);
       },
       py::arg("opts"), py::arg("clat"));
   m.def(
@@ -173,12 +172,12 @@ void pybind_chain_supervision(py::module& m) {
          const TransitionModel& trans_model,
          const ProtoSupervision& proto_supervision,
          bool convert_to_pdfs) -> std::pair<bool, Supervision> {
-        bool is_succeeded = false;
+        bool is_ok = false;
         Supervision supervision;
-        is_succeeded = ProtoSupervisionToSupervision(
-            ctx_dep, trans_model, proto_supervision, convert_to_pdfs,
-            &supervision);
-        return std::make_pair(is_succeeded, supervision);
+        is_ok = ProtoSupervisionToSupervision(ctx_dep, trans_model,
+                                              proto_supervision,
+                                              convert_to_pdfs, &supervision);
+        return std::make_pair(is_ok, supervision);
       },
       py::arg("ctx_dep"), py::arg("trans_model"), py::arg("proto_supervision"),
       py::arg("convert_to_pdfs"));
