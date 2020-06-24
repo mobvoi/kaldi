@@ -21,11 +21,12 @@
 #include "fstext/kaldi-fst-io.h"
 
 void pybind_kaldi_fst_io(py::module& m) {
-  m.def("ReadFstKaldi", (fst::StdVectorFst * (*)(std::string))fst::ReadFstKaldi,
+  m.def("ReadFstKaldi",
+        (fst::StdVectorFst * (*)(std::string)) fst::ReadFstKaldi,
         "Read a binary FST using Kaldi I/O mechanisms (pipes, etc.) On error, "
         "throws using KALDI_ERR.  Note: this doesn't support the text-mode "
         "option that we generally like to support.",
-        py::arg("rxfilename"), py::return_value_policy::reference);
+        py::arg("rxfilename"), py::return_value_policy::take_ownership);
 
   m.def("ReadFstKaldiGeneric", fst::ReadFstKaldiGeneric,
         "Read a binary FST using Kaldi I/O mechanisms (pipes, etc.) If it "
@@ -36,7 +37,7 @@ void pybind_kaldi_fst_io(py::module& m) {
         "VectorFst<StdArc> (const-fst can give better performance for "
         "decoding).",
         py::arg("rxfilename"), py::arg("throw_on_err") = true,
-        py::return_value_policy::reference);
+        py::return_value_policy::take_ownership);
 
   m.def("CastOrConvertToVectorFst", &fst::CastOrConvertToVectorFst,
         "This function attempts to dynamic_cast the pointer 'fst' (which will "
@@ -45,7 +46,7 @@ void pybind_kaldi_fst_io(py::module& m) {
         "pointer; if it fails, it converts the FST type (by creating a new "
         "VectorFst<stdArc> initialized by 'fst'), prints a warning, and "
         "deletes 'fst'.",
-        py::arg("fst"), py::return_value_policy::reference);
+        py::arg("fst"), py::return_value_policy::take_ownership);
 
   m.def("ReadFstKaldi",
         (void (*)(std::string, fst::StdVectorFst*)) & fst::ReadFstKaldi,
@@ -77,7 +78,7 @@ void pybind_kaldi_fst_io(py::module& m) {
   m.def("ReadAndPrepareLmFst", &fst::ReadAndPrepareLmFst,
         "Read an FST file for LM (G.fst) and make it an acceptor, and make "
         "sure it is sorted on labels",
-        py::arg("rxfilename"), py::return_value_policy::reference);
+        py::arg("rxfilename"), py::return_value_policy::take_ownership);
 
   {
     // fangjun: it should be called StdVectorFstHolder to match the naming

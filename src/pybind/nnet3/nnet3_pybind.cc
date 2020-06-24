@@ -26,6 +26,7 @@
 #include "nnet3/nnet_component_itf_pybind.h"
 #include "nnet3/nnet_convolutional_component_pybind.h"
 #include "nnet3/nnet_example_pybind.h"
+#include "nnet3/nnet_example_utils_pybind.h"
 #include "nnet3/nnet_nnet_pybind.h"
 #include "nnet3/nnet_normalize_component_pybind.h"
 #include "nnet3/nnet_simple_component_pybind.h"
@@ -41,4 +42,5 @@ void pybind_nnet3(py::module& _m) {
   pybind_nnet_nnet(m);
   pybind_nnet_normalize_component(m);
   pybind_nnet_simple_component(m);
+  pybind_nnet_example_utils(m);
 }

@@ -54,4 +54,11 @@ void pybind_sparse_matrix(py::module& m) {
              "work regardless of Type().",
              py::arg("mat"));
   }
+  m.def("ExtractRowRangeWithPadding",
+        [](const GeneralMatrix& in, int32 row_offset,
+           int32 num_rows) -> GeneralMatrix {
+          GeneralMatrix out;
+          ExtractRowRangeWithPadding(in, row_offset, num_rows, &out);
+          return out;
+        });
 }

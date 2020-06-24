@@ -25,10 +25,17 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-example.h"
+
 namespace py = pybind11;
 
 template <typename... Args>
 using overload_cast_ = py::detail::overload_cast_impl<Args...>;
+
+PYBIND11_MAKE_OPAQUE(std::vector<kaldi::BaseFloat>);
+PYBIND11_MAKE_OPAQUE(std::vector<kaldi::nnet3::NnetIo>);
+PYBIND11_MAKE_OPAQUE(std::vector<kaldi::nnet3::NnetChainSupervision>);
 
 #define DEF_CLASS(name) py::class_<PyClass> pyclass(m, name);
 

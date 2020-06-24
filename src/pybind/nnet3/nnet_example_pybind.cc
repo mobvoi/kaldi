@@ -33,6 +33,9 @@ void pybind_nnet_example(py::module& m) {
     using PyClass = NnetIo;
     py::class_<PyClass>(m, "NnetIo")
         .def(py::init<>())
+        .def(py::init<const std::string&, int32, const GeneralMatrix&, int32>(),
+             py::arg("name"), py::arg("t_begin"), py::arg("feats"),
+             py::arg("t_stride") = 1)
         .def_readwrite("name", &PyClass::name,
                        "the name of the input in the neural net; in simple "
                        "setups it will just be 'input'.")
@@ -44,24 +47,37 @@ void pybind_nnet_example(py::module& m) {
     // TODO(fangjun): other constructors, fields and methods can be wrapped when
   }
   {
+    using PyClass = std::vector<NnetIo>;
+    DEF_CLASS("NnetIoVector");
+    DEF_INIT();
+    pyclass.def("resize", [](PyClass* self, size_t sz) { self->resize(sz); });
+    pyclass.def("__len__", [](const PyClass& self) { return self.size(); });
+    pyclass.def("__setitem__", [](PyClass& self, size_t i,
+                                  const NnetIo& value) { self[i] = value; });
+  }
+  {
     using PyClass = NnetExample;
     py::class_<PyClass>(m, "NnetExample",
-    "NnetExample is the input data and corresponding label (or labels) for one or "
-    "more frames of input, used for standard cross-entropy training of neural "
-    "nets (and possibly for other objective functions). ")
+                        "NnetExample is the input data and corresponding label "
+                        "(or labels) for one or "
+                        "more frames of input, used for standard cross-entropy "
+                        "training of neural "
+                        "nets (and possibly for other objective functions). ")
         .def(py::init<>())
         .def_readwrite("io", &PyClass::io,
-        "\"io\" contains the input and output.  In principle there can be multiple "
-        "types of both input and output, with different names.  The order is "
-        "irrelevant.")
+                       "\"io\" contains the input and output.  In principle "
+                       "there can be multiple "
+                       "types of both input and output, with different names.  "
+                       "The order is "
+                       "irrelevant.")
         .def("Compress", &PyClass::Compress,
              "Compresses any (input) features that are not sparse.")
         .def("Read", &PyClass::Read, py::arg("is"), py::arg("binary"));
 
     pybind_sequential_table_reader<KaldiObjectHolder<PyClass>>(
-      m, "_SequentialNnetExampleReader");
+        m, "_SequentialNnetExampleReader");
 
     pybind_random_access_table_reader<KaldiObjectHolder<PyClass>>(
-      m, "_RandomAccessNnetExampleReader");
+        m, "_RandomAccessNnetExampleReader");
   }
 }

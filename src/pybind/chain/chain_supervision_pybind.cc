@@ -151,10 +151,26 @@ static void pybind_proto_supervision(py::module& m) {
   DEF(Write);
 }
 
+static void pybind_supervision_splitter(py::module& m) {
+  using PyClass = SupervisionSplitter;
+  DEF_CLASS("SupervisionSplitter");
+  pyclass.def(py::init<const Supervision&>(), py::arg("supervision"));
+  pyclass.def(
+      "GetFrameRange",
+      [](const PyClass& self, int32 begin_frame,
+         int32 frames_per_sequence) -> Supervision {
+        Supervision supervision;
+        self.GetFrameRange(begin_frame, frames_per_sequence, &supervision);
+        return supervision;
+      },
+      py::arg("begin_frame"), py::arg("frames_per_sequence"));
+}
+
 void pybind_chain_supervision(py::module& m) {
   pybind_supervsion_options(m);
   pybind_supervsion(m);
   pybind_proto_supervision(m);
+  pybind_supervision_splitter(m);
   m.def(
       "PhoneLatticeToProtoSupervision",
       [](const SupervisionOptions& opts,
@@ -181,4 +197,6 @@ void pybind_chain_supervision(py::module& m) {
       },
       py::arg("ctx_dep"), py::arg("trans_model"), py::arg("proto_supervision"),
       py::arg("convert_to_pdfs"));
+  m.def("AddWeightToSupervisionFst", &AddWeightToSupervisionFst,
+        py::arg("normalization_fst"), py::arg("supervision"));
 }

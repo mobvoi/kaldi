@@ -41,6 +41,10 @@ void pybind_nnet_chain_example(py::module& m) {
         "supervision information at the output of the network (which imposes "
         "constraints on which frames each phone can be active on")
         .def(py::init<>())
+        .def(py::init<const std::string&, const Supervision&,
+                      const VectorBase<BaseFloat>&, int32, int32>(),
+             py::arg("name"), py::arg("supervision"), py::arg("deriv_weights"),
+             py::arg("first_frame"), py::arg("frame_skip"))
         .def_readwrite("name", &PyClass::name,
                        "the name of the output in the neural net; in simple "
                        "setups it will just be 'output'.")
@@ -84,6 +88,18 @@ void pybind_nnet_chain_example(py::module& m) {
              })
         // TODO(fangjun): other methods can be wrapped when needed
         ;
+  }
+
+  {
+    using PyClass = std::vector<NnetChainSupervision>;
+    DEF_CLASS("NnetChainSupervisionVector");
+    DEF_INIT();
+    pyclass.def("resize", [](PyClass* self, size_t sz) { self->resize(sz); });
+    pyclass.def("__len__", [](const PyClass& self) { return self.size(); });
+    pyclass.def("__setitem__",
+                [](PyClass& self, size_t i, const NnetChainSupervision& value) {
+                  self[i] = value;
+                });
   }
   {
     using PyClass = NnetChainExample;

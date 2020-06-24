@@ -36,8 +36,17 @@
 #include "tree/tree_pybind.h"
 #include "util/util_pybind.h"
 
+static void pybind_vector_base_float(py::module& m) {
+  using PyClass = std::vector<kaldi::BaseFloat>;
+  DEF_CLASS("BaseFloatStdVector");
+  DEF_INIT();
+  pyclass.def("__len__", [](const PyClass& self) { return self.size(); });
+}
+
 PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() = "pybind11 binding of some things from kaldi";
+
+  pybind_vector_base_float(m);
 
   pybind_matrix(m);
   pybind_itf(m);
@@ -47,8 +56,8 @@ PYBIND11_MODULE(kaldi_pybind, m) {
 
   pybind_fst(m);
   pybind_lat(m);
-  pybind_chain(m);
   pybind_nnet3(m);
+  pybind_chain(m);
 
   pybind_dlpack(m);
 

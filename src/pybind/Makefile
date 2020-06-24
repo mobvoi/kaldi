@@ -96,6 +96,7 @@ nnet3/nnet_common_pybind.cc \
 nnet3/nnet_component_itf_pybind.cc \
 nnet3/nnet_convolutional_component_pybind.cc \
 nnet3/nnet_example_pybind.cc \
+nnet3/nnet_example_utils_pybind.cc \
 nnet3/nnet_nnet_pybind.cc \
 nnet3/nnet_normalize_component_pybind.cc \
 nnet3/nnet_simple_component_pybind.cc \

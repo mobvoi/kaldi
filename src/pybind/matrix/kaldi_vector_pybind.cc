@@ -88,13 +88,22 @@ void pybind_kaldi_vector(py::module& m) {
         }
         return new SubVector<float>(reinterpret_cast<float*>(info.ptr),
                                     info.shape[0]);
-      }));
+      }))
+      .def(py::init([](std::vector<float>* v) {
+             return new SubVector<float>(v->data(),
+                                         static_cast<int32>(v->size()));
+           }),
+           // 1 is the first implicit arg, i.e., `self`
+           // 2 is `v`
+           // keep `v` alive as long as `self` is alive
+           py::keep_alive<1, 2>());
 
   py::class_<DLPackSubVector<float>, SubVector<float>>(m,
                                                        "DLPackFloatSubVector")
-      .def("from_dlpack",
-           [](py::capsule* capsule) {
-             return SubVectorFromDLPack<float>(capsule);
-           },
-           py::return_value_policy::take_ownership);
+      .def(
+          "from_dlpack",
+          [](py::capsule* capsule) {
+            return SubVectorFromDLPack<float>(capsule);
+          },
+          py::return_value_policy::take_ownership);
 }
