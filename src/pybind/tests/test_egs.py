@@ -35,7 +35,6 @@ class TestEgs(unittest.TestCase):
         lat_reader = kaldi.RandomAccessCompactLatticeReader('scp:test_data/lat.scp')
         chain_tree = kaldi.read_tree('test_data/tree')
         chain_trans_mdl = kaldi.read_transition_model('test_data/0.trans_mdl')
-        print(type(chain_tree))
 
         sup_opts = chain.SupervisionOptions()
         sup_opts.frame_subsampling_factor = 3
@@ -79,7 +78,6 @@ class TestEgs(unittest.TestCase):
             assert supervision.num_sequences == 1
 
             feat = fbank_computer.ComputeFeatures(wav.Data().Row(0), wav.SampFreq(), 1.0)
-            print(feat.numpy().shape, type(supervision))
 
             num_input_frames = feat.NumRows()
             num_output_frames = supervision.frames_per_sequence
@@ -95,7 +93,6 @@ class TestEgs(unittest.TestCase):
             assert chunks, 'The returned chunks should not be an empty list; the wav is too short!'
 
             sup_splitter = chain.SupervisionSplitter(supervision)
-            print(len(chunks))
             for chunk in chunks:
                 start_frame_subsampled = chunk.first_frame // frame_subsampling_factor
                 num_frames_subsampled = chunk.num_frames // frame_subsampling_factor
@@ -135,6 +132,7 @@ class TestEgs(unittest.TestCase):
                 else:
                     key = '{}-{}'.format(utt_id, chunk.first_frame)
                 # TODO(fangjun): is key needed or is nnet_chain_eg needed?
+                print(key, nnet_chain_eg)
 
 
 if __name__ == '__main__':

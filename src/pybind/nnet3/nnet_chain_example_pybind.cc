@@ -83,9 +83,16 @@ void pybind_nnet_chain_example(py::module& m) {
         .def("__str__",
              [](const PyClass& sup) {
                std::ostringstream os;
-               os << "name: " << sup.name << "\n";
+               sup.Write(os, false);
                return os.str();
              })
+        .def("ToString",
+             [](const PyClass& sup) {
+               std::ostringstream os;
+               sup.Write(os, false);
+               return os.str();
+             })
+
         // TODO(fangjun): other methods can be wrapped when needed
         ;
   }
@@ -111,7 +118,18 @@ void pybind_nnet_chain_example(py::module& m) {
              "Compresses the input features (if not compressed)")
         .def("__eq__",
              [](const PyClass& a, const PyClass& b) { return a == b; })
-        .def("Read", &PyClass::Read, py::arg("is"), py::arg("binary"));
+        .def("Read", &PyClass::Read, py::arg("is"), py::arg("binary"))
+        .def("ToString",
+             [](const PyClass& self) {
+               std::ostringstream os;
+               self.Write(os, false);
+               return os.str();
+             })
+        .def("__str__", [](const PyClass& self) {
+          std::ostringstream os;
+          self.Write(os, false);
+          return os.str();
+        });
 
     // (fangjun): we follow the PyKaldi style to prepend a underline before the
     // registered classes and the user in general should not use them directly;
