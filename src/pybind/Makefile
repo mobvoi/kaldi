@@ -40,6 +40,8 @@ endif
 
 # files should be sorted in alphabetic order
 CCFILES = \
+base/base_pybind.cc \
+base/kaldi_error_pybind.cc \
 chain/chain_den_graph_pybind.cc \
 chain/chain_pybind.cc \
 chain/chain_supervision_pybind.cc \
@@ -90,6 +92,7 @@ matrix/kaldi_vector_pybind.cc \
 matrix/matrix_common_pybind.cc \
 matrix/matrix_pybind.cc \
 matrix/sparse_matrix_pybind.cc \
+nnet3/chain-example-merger.cc \
 nnet3/nnet3_pybind.cc \
 nnet3/nnet_chain_example_pybind.cc \
 nnet3/nnet_common_pybind.cc \

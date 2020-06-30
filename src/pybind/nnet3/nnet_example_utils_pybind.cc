@@ -96,10 +96,40 @@ static void pybind_utterance_splitter(py::module& m) {
   DEF(ExitStatus);
 }
 
+static void pybind_example_merging_config(py::module& m) {
+  using PyClass = ExampleMergingConfig;
+  DEF_CLASS("ExampleMergingConfig");
+  pyclass.def(py::init([](const std::string& default_minibatch_size = "256") {
+                return new ExampleMergingConfig(default_minibatch_size.c_str());
+              }),
+              py::arg("default_minibatch_size") = "256");
+  DEF_P(compress);
+  DEF_P(measure_output_frames);
+  DEF_P(minibatch_size);
+  DEF_P(discard_partial_minibatches);
+  DEF_P(multilingual_eg);
+
+  DEF(ComputeDerived);
+  pyclass.def("MinibatchSize", &PyClass::MinibatchSize, py::arg("size_of_eg"),
+              py::arg("num_available_egs"), py::arg("input_ended"));
+
+  pyclass.def("__str__", [](const PyClass& self) {
+    std::ostringstream os;
+    os << "compress: " << self.compress << "\n";
+    os << "measure_output_frames: " << self.measure_output_frames << "\n";
+    os << "minibatch_size: " << self.minibatch_size << "\n";
+    os << "discard_partial_minibatches: " << self.discard_partial_minibatches
+       << "\n";
+    os << "multilingual_eg: " << self.multilingual_eg << "\n";
+    return os.str();
+  });
+}
+
 void pybind_nnet_example_utils(py::module& m) {
   pybind_example_generation_config(m);
   pybind_chunk_time_info(m);
   pybind_utterance_splitter(m);
+  pybind_example_merging_config(m);
 
   m.def("srand", [](unsigned int seed) { srand(seed); });
 }

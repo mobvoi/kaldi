@@ -20,6 +20,7 @@ from kaldi import nnet3
 class TestEgs(unittest.TestCase):
 
     def test(self):
+        kaldi.DisableLog()
 
         fbank_opts = kaldi.FbankOptions()
         fbank_opts.frame_opts.dither = 0
@@ -61,6 +62,12 @@ class TestEgs(unittest.TestCase):
         supervision_length_tolerance = 1
         long_key = False
 
+        minibatch_size = "3"
+        merging_config = nnet3.ExampleMergingConfig(default_minibatch_size=minibatch_size)
+        merging_config.ComputeDerived()
+        merger = nnet3.ChainExampleMerger(merging_config)
+
+        kkk = 0
         for utt_id, wav in wav_reader:
             assert utt_id in lat_reader
             lat = lat_reader[utt_id]
@@ -93,6 +100,7 @@ class TestEgs(unittest.TestCase):
             assert chunks, 'The returned chunks should not be an empty list; the wav is too short!'
 
             sup_splitter = chain.SupervisionSplitter(supervision)
+
             for chunk in chunks:
                 start_frame_subsampled = chunk.first_frame // frame_subsampling_factor
                 num_frames_subsampled = chunk.num_frames // frame_subsampling_factor
@@ -131,8 +139,12 @@ class TestEgs(unittest.TestCase):
                         right_context=chunk.right_context)
                 else:
                     key = '{}-{}'.format(utt_id, chunk.first_frame)
-                # TODO(fangjun): is key needed or is nnet_chain_eg needed?
-                print(key, nnet_chain_eg)
+                merger.AcceptExample(nnet_chain_eg)
+        merger.Finish()
+        for i in range(merger.Size()):
+            utt_id, eg = merger.Get()
+            print(utt_id, eg)
+            merger.Pop()
 
 
 if __name__ == '__main__':

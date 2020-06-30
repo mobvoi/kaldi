@@ -21,6 +21,7 @@
 
 #include <string>
 
+#include "base/base_pybind.h"
 #include "chain/chain_pybind.h"
 #include "cudamatrix/cudamatrix_pybind.h"
 #include "decoder/decoder_pybind.h"
@@ -45,6 +46,8 @@ static void pybind_vector_base_float(py::module& m) {
 
 PYBIND11_MODULE(kaldi_pybind, m) {
   m.doc() = "pybind11 binding of some things from kaldi";
+
+  pybind_base(m);
 
   pybind_vector_base_float(m);
 

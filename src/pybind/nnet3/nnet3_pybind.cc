@@ -43,4 +43,5 @@ void pybind_nnet3(py::module& _m) {
   pybind_nnet_normalize_component(m);
   pybind_nnet_simple_component(m);
   pybind_nnet_example_utils(m);
+  pybind_chain_example_merger(m);
 }

@@ -1,7 +1,6 @@
-// pybind/nnet3/nnet_chain_example_pybind.h
+// pybind/base/kaldi_error_pybind.h
 
-// Copyright 2019   Mobvoi AI Lab, Beijing, China
-//                  (author: Fangjun Kuang, Yaguang Hu, Jian Wang)
+// Copyright 2020   Mobvoi AI Lab, Beijing, China (author: Fangjun Kuang)
 
 // See ../../../COPYING for clarification regarding multiple authors
 //
@@ -16,12 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_PYBIND_NNET3_CHAIN_EXAMPLE_PYBIND_H_
-#define KALDI_PYBIND_NNET3_CHAIN_EXAMPLE_PYBIND_H_
+#ifndef KALDI_PYBIND_BASE_KALDI_ERROR_PYBIND_H_
+#define KALDI_PYBIND_BASE_KALDI_ERROR_PYBIND_H_
 
 #include "pybind/kaldi_pybind.h"
 
-void pybind_nnet_chain_example(py::module& m);
-void pybind_chain_example_merger(py::module& m);
+void pybind_kaldi_error(py::module& m);
 
-#endif  // KALDI_PYBIND_NNET3_CHAIN_EXAMPLE_PYBIND_H_
+#endif  // KALDI_PYBIND_BASE_KALDI_ERROR_PYBIND_H_
