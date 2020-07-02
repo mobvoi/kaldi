@@ -52,6 +52,8 @@ void pybind_nnet_example(py::module& m) {
     DEF_INIT();
     pyclass.def("resize", [](PyClass* self, size_t sz) { self->resize(sz); });
     pyclass.def("__len__", [](const PyClass& self) { return self.size(); });
+    pyclass.def("__getitem__",
+                [](const PyClass& self, size_t i) { return self[i]; });
     pyclass.def("__setitem__", [](PyClass& self, size_t i,
                                   const NnetIo& value) { self[i] = value; });
   }
